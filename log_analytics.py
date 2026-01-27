@@ -1,8 +1,5 @@
-import json
-import time
-import os
-import random
-import sqlite3
+import json, uuid, time, os, random, sqlite3
+from collections import deque
 
 def log_creator():
     """Method for generating a single entry. Each entry should follow this following format:
@@ -20,51 +17,107 @@ def log_creator():
     """
 
     entries = []
-    for _ in range (1000):
-        entry = {}
-        service_area = ["auth", "payment", "orders-service", "search"]
-        levels = ["INFO", "INFO", "INFO", "INFO", "DEBUG", "DEBUG",  "DEBUG", "WARN", "WARN", "ERROR", "ERROR", "CRITICAL"]
 
-        endpoint = {
+    service_area = ["auth", "payment", "orders-service", "search"]
+
+    glob_endpoint = {
             "auth" : ["/login", "/logout", "/register"],
             "payment" : ["/checkout", "/refund", "/payment-method"],
             "orders-service" : ["/orders", "/create", "/add"],
             "search" : ["/search", "/autocomplete", "/recommendation"]
         }
 
-        # Create a dictionary and create a key - value pair for each line in the entry. 
+    workflows = {
+        "place_order": [
+            ("auth", "/login"),
+            ("orders-service", "/create"),
+            ("orders-service", "/add"),
+            ("payment", "/payment-method"),
+            ("payment", "/checkout")
+        ],
+        "login_logout": [
+            ("auth", "/login"),
+            ("auth", "/logout")
+        ],
+        "place_order_refund": [
+            ("auth", "/login"),
+            ("orders-service", "/create"),
+            ("orders-service", "/add"),
+            ("payment", "/payment-method"),
+            ("payment", "/checkout"),
+            ("payment", "/refund")
+        ],
+        "register_login_place_order": [
+            ("auth", "/register"),
+            ("auth", "/login"),
+            ("orders-service", "/create"),
+            ("orders-service", "/add"),
+            ("payment", "/payment-method"),
+            ("payment", "/checkout")
+        ],
+        "recommendation_place_order": [
+            ("auth", "/login"),
+            ("search", "/recommendation"),
+            ("orders-service", "/create"),
+            ("orders-service", "/add"),
+            ("payment", "/payment-method"),
+            ("payment", "/checkout")
+        ]
+    }
 
-        # Time entry creation, follows this format year-month-dayThour:min:secs
-       
-        entry["timestamp"] = generate_time_stamp()
+    ongoing_workflows = []
 
-        # Creation of service entry
-        entry["service_area"] = random.choice(service_area)
+    for i in range (1000):
 
-        # Creation of specific endpoint
-        current_endpoint_specific = random.choice(endpoint[entry["service_area"]])
-        entry["endpoint"] = current_endpoint_specific
+        action = random.choices(["new_workflow", "continue_workflow", "random_log"] 
+                                ,weights = [0.3, 0.5, 0.2])[0]
 
-        # Creation of the level 
-        entry["level"] = random.choice(levels)
+        entry = {}
 
-        # Creation of response time 
-        entry["response_time_ms"] = generate_response_time(entry["service_area"], entry["endpoint"], entry["level"])
-        entries.append(entry)
+        if action == "new_workflow":
+            wf_name = random.choice(list(workflows.keys()))
+            steps = workflows[wf_name]
+            event_id = generate_event_id()
+            user_id = random.randint(1, 100000)
+
+            ongoing_workflows.append({
+                "steps":steps,
+                "current":0,
+                "event_id":event_id,
+                "user_id":user_id
+            })
+
+            service_area, endpoint = steps[0]
+
+            entries.append(generate_log_entry(service_area, endpoint, event_id))
+            ongoing_workflows[-1]["current"] += 1
+
+        elif action == "continue_workflow" and ongoing_workflows:
+             # Fetch a random workflow and continue that one
+             wf = random.choice(ongoing_workflows)
+
+             if wf["current"] < len(wf["steps"]):
+                service_area, endpoint = wf["steps"][wf["current"]]
+                entries.append(generate_log_entry(service_area, endpoint, wf["event_id"], wf["user_id"]))
+                wf["current"] += 1
+            
+             if wf["current"] >= len(wf["steps"]):
+                ongoing_workflows.remove(wf) 
+        
+        else:
+            # Put a random event in there:
+
+            service_area = random.choice(list(glob_endpoint.keys()))
+            endpoint = random.choice(list(glob_endpoint[service_area]))
+            entries.append(generate_log_entry(service_area, endpoint))
+             
 
     with open("order_log.json", "w") as f:
         json.dump(entries, fp=f, indent=4)
 
 def generate_time_stamp():
         curr = time.localtime(time.time())
-        year = str(curr.tm_year)
-        mon = str(curr.tm_mon)
-        day = str(curr.tm_mday)
-        hour = str(curr.tm_hour)
-        min = str(curr.tm_min)
-        secs = str(curr.tm_sec)
-
-        return year + "-" + mon + "-"+ day + "T" + hour + ":" + min + ":" + (secs if len(secs) > 1 else ("0" + secs))
+        return time.strftime("%Y-%m-%dT%H:%M:%S", curr)
 
 def generate_response_time(service_area: str , endpoint: str, level: str) -> float:
     """Function to sort of accurately generate response time depending on entry specifics."""
@@ -108,6 +161,23 @@ def generate_response_time(service_area: str , endpoint: str, level: str) -> flo
     response_time = response_time * level_multiplier[level]
 
     return round(response_time, 2)
+
+def generate_event_id():
+    return str(uuid.uuid4())
+
+def generate_log_entry(service_area, endpoint, event_id=None, user_id=None):
+    levels = ["INFO",  "DEBUG","WARN", "ERROR", "CRITICAL"]
+    level = random.choices(levels, weights=[0.60, 0.20, 0.10, 0.05, 0.05])[0]
+    entry = {
+        "time_stamp":generate_time_stamp(),
+        "service_area":service_area,
+        "endpoint":endpoint,
+        "level":level,
+        "response_time":generate_response_time(service_area, endpoint, level),
+        "user_id":user_id if user_id else random.randint(1, 10000),
+        "event_id":event_id if event_id else generate_event_id()
+    }
+    return entry
 
 
 log_creator()
