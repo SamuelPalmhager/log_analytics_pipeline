@@ -1,7 +1,7 @@
 import sqlite3
 import json
 
-def etl():
+def etl(filename):
     """ ETL stands for 'extract load transform' and makes sure that unstructured or incomplete data
      gets treated and structured for loading into a sql-based database.  
      
@@ -16,16 +16,32 @@ def etl():
         "level varchar(255),"
         "response_time float,"
         "user_id integer,"
-        "event_id varchar(255))")
+        "event_id varchar(255)," \
+        "response_bucket varchar(50))")
 
-    with open("order_log.json", 'r') as f:
+    with open(f"{filename}.json", 'r') as f:
         data = json.load(f)
     
     for item in data:
-        conn.execute("INSERT INTO order_logs (time_stamp, service_area, endpoint, level, response_time, user_id, event_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     (item["time_stamp"], item["service_area"], item["endpoint"], item["level"], item["response_time"], item["user_id"], item["event_id"]))
+        conn.execute("INSERT INTO order_logs (time_stamp, service_area, endpoint, level, response_time, user_id, event_id, response_bucket) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                     (item["time_stamp"], 
+                      item["service_area"].lower(), 
+                      item["endpoint"].lower(), 
+                      item["level"].upper(), 
+                      item["response_time"], 
+                      item["user_id"], 
+                      item["event_id"],
+                      derive_response_bucket(item["response_time"])))
         
     conn.commit()
     conn.close()
 
-etl()
+def derive_response_bucket(rt):
+    if rt < 200: 
+        return "fast"
+    elif rt <= 500:
+        return "normal"
+    elif rt <= 800:
+        return "slow"
+    else:
+        return "critical"

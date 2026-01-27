@@ -1,7 +1,7 @@
 import json, uuid, time, os, random, sqlite3
 from collections import deque
 
-def log_creator():
+def log_creator(filename):
     """Method for generating a single entry. Each entry should follow this following format:
 
     {
@@ -112,7 +112,7 @@ def log_creator():
             entries.append(generate_log_entry(service_area, endpoint))
              
 
-    with open("order_log.json", "w") as f:
+    with open(f"{filename}.json", "w") as f:
         json.dump(entries, fp=f, indent=4)
 
 def generate_time_stamp():
@@ -178,6 +178,3 @@ def generate_log_entry(service_area, endpoint, event_id=None, user_id=None):
         "event_id":event_id if event_id else generate_event_id()
     }
     return entry
-
-
-log_creator()
