@@ -1,8 +1,8 @@
 
 import sys
-from log_analytics import log_creator
-from etl import etl
-from analytics import analytics
+from producer.log_analytics import log_creator
+from pipeline.etl import etl
+from analytics.analysis import perform_analysis
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     arg = sys.argv[1]
     log_creator(arg)
     etl(arg)
-    analytics(arg)    
+    perform_analysis(arg)    
 
 if __name__ == "__main__":
     main()

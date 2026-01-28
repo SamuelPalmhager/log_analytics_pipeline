@@ -1,4 +1,4 @@
-import json, uuid, time, os, random, sqlite3
+import json, uuid, time, os, random, sqlite3, yaml
 from collections import deque
 
 def log_creator(filename):
@@ -16,6 +16,10 @@ def log_creator(filename):
 
     This should generate 1000 entries of this and store into json file.
     """
+
+
+    with open("config/config.yaml", "r") as f:
+        config = yaml.safe_load(f)
 
     entries = []
 
@@ -70,8 +74,8 @@ def log_creator(filename):
 
     for i in range (1000):
 
-        action = random.choices(["new_workflow", "continue_workflow", "random_log"] 
-                                ,weights = [0.3, 0.5, 0.2])[0]
+        action = random.choices(list(config["generator"]["action"].keys()),
+                                weights = list(config["generator"]["action"].values()))[0]
 
         entry = {}
 
@@ -90,7 +94,7 @@ def log_creator(filename):
 
             service_area, endpoint = steps[0]
 
-            entries.append(generate_log_entry(service_area, endpoint, event_id))
+            entries.append(generate_log_entry(service_area, endpoint, config, event_id))
             ongoing_workflows[-1]["current"] += 1
 
         elif action == "continue_workflow" and ongoing_workflows:
@@ -99,7 +103,7 @@ def log_creator(filename):
 
              if wf["current"] < len(wf["steps"]):
                 service_area, endpoint = wf["steps"][wf["current"]]
-                entries.append(generate_log_entry(service_area, endpoint, wf["event_id"], wf["user_id"]))
+                entries.append(generate_log_entry(service_area, endpoint, config, wf["event_id"], wf["user_id"]))
                 wf["current"] += 1
             
              if wf["current"] >= len(wf["steps"]):
@@ -110,71 +114,39 @@ def log_creator(filename):
 
             service_area = random.choice(list(glob_endpoint.keys()))
             endpoint = random.choice(list(glob_endpoint[service_area]))
-            entries.append(generate_log_entry(service_area, endpoint))
+            entries.append(generate_log_entry(service_area, endpoint, config=config))
              
-
-    with open(f"{filename}.json", "w") as f:
+    with open(f"db/{filename}.json", "w") as f:
         json.dump(entries, fp=f, indent=4)
 
 def generate_time_stamp():
         curr = time.localtime(time.time())
         return time.strftime("%Y-%m-%dT%H:%M:%S", curr)
 
-def generate_response_time(service_area: str , endpoint: str, level: str) -> float:
+def generate_response_time(service_area: str , endpoint: str, level: str, config) -> float:
     """Function to sort of accurately generate response time depending on entry specifics."""
-    base_ranges = {
 
-        "auth" : {
-            "/login":(50, 250),
-            "/logout":(30, 100),
-            "/register":(80, 300)
-        },
+    ranges = config["generator"]["services"][service_area]["endpoints"][endpoint]
+    r_min, r_max = ranges
 
-        "payment" : {
-            "/checkout":(400, 900),
-            "/refund":(400, 1200),
-            "/payment-method":(200, 700)
-        },
+    response_time = int(random.uniform(r_min, r_max))
 
-        "orders-service" : {
-            "/orders":(100, 300),
-            "/create":(50, 200),
-            "/add":(50, 750)
-        },
-
-        "search" : {
-            "/search":(100, 1000),
-            "/autocomplete":(20, 120),
-            "/recommendation":(750, 1500)
-        }
-    }
-
-    level_multiplier = {
-        "INFO":1.0,
-        "DEBUG":1.2,
-        "WARN":1.5,
-        "ERROR":2.0,
-        "CRITICAL":3.0
-    }
-
-    response_time = int(random.uniform(base_ranges[service_area][endpoint][0], base_ranges[service_area][endpoint][1]))
-
-    response_time = response_time * level_multiplier[level]
+    response_time = response_time * config["generator"]["log_levels"][level]
 
     return round(response_time, 2)
 
 def generate_event_id():
     return str(uuid.uuid4())
 
-def generate_log_entry(service_area, endpoint, event_id=None, user_id=None):
-    levels = ["INFO",  "DEBUG","WARN", "ERROR", "CRITICAL"]
+def generate_log_entry(service_area, endpoint, config, event_id=None, user_id=None):
+    levels = list(config["generator"]["log_levels"].keys())
     level = random.choices(levels, weights=[0.60, 0.20, 0.10, 0.05, 0.05])[0]
     entry = {
         "time_stamp":generate_time_stamp(),
         "service_area":service_area,
         "endpoint":endpoint,
         "level":level,
-        "response_time":generate_response_time(service_area, endpoint, level),
+        "response_time":generate_response_time(service_area, endpoint, level, config=config),
         "user_id":user_id if user_id else random.randint(1, 10000),
         "event_id":event_id if event_id else generate_event_id()
     }

@@ -1,5 +1,4 @@
-import sqlite3
-import json
+import sqlite3, json, os
 
 def etl(filename):
     """ ETL stands for 'extract load transform' and makes sure that unstructured or incomplete data
@@ -7,7 +6,8 @@ def etl(filename):
      
      This function will extract the contents of order_log.json, perform some form of cleaning, and then load it into a local sqlite .log file. """
     
-    conn = sqlite3.connect(f'{filename}.db')
+
+    conn = sqlite3.connect(f'db/{filename}.db')
 
     conn.execute("CREATE TABLE order_logs ("
         "time_stamp varchar(255), "
@@ -19,7 +19,7 @@ def etl(filename):
         "event_id varchar(255)," \
         "response_bucket varchar(50))")
 
-    with open(f"{filename}.json", 'r') as f:
+    with open(f"db/{filename}.json", 'r') as f:
         data = json.load(f)
     
     for item in data:

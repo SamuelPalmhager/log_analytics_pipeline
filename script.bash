@@ -1,3 +1,4 @@
+
 if [ $# -gt 0 ]; then
     filename="$1"
 else
@@ -7,4 +8,4 @@ fi
 
 python3 main.py "$filename"
 
-rm "${filename}.json"
+rm "db/${filename}.json"

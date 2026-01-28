@@ -1,0 +1,42 @@
+database: 
+  path: db/logs.db
+
+generator:
+  user_id_range: [1, 10000]
+
+  log_levels:
+    INFO: 1.0 
+    DEBUG: 1.2
+    WARN: 1.5
+    ERROR: 2.0
+    CRITICAL: 3.0 
+
+  services: 
+    auth:
+      endpoints:
+        /login: [50, 250]
+        /logout: [30, 100]
+        /register: [80, 300]
+    
+    payment:
+      endpoints: 
+        /checkout: [400, 900]
+        /refund: [400, 1200]
+        /payment-method: [200, 700]
+
+    orders-service:
+      endpoints: 
+        /orders: [100, 300]
+        /create: [50, 200]
+        /add: [50, 750]
+
+    search:
+      endpoints:
+        /search: [100, 1000]
+        /autocomplete: [20, 120]
+        /recommendation: [750, 1500]      
+
+  action:
+    new_workflow: 0.3
+    continue_workflow: 0.5
+    random_log: 0.2
