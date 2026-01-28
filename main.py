@@ -1,8 +1,15 @@
+
+import sys
 from log_analytics import log_creator
 from etl import etl
 
-def main():
-    log_creator("test")
-    etl("test")
 
-main()
+def main():
+    # Collect arguments from command line, skip the script name
+    arg = sys.argv[1]
+    log_creator(arg)
+    etl(arg)
+
+if __name__ == "__main__":
+    main()
+    

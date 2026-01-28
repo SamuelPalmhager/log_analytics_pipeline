@@ -2,7 +2,8 @@ import json, uuid, time, os, random, sqlite3
 from collections import deque
 
 def log_creator(filename):
-    """Method for generating a single entry. Each entry should follow this following format:
+    """Method for generating a single entry, start of a workflow or the continuation of a ongoing workflow. 
+    Each entry should follow this following format:
 
     {
      "timestamp":"2026-01-26T10:55:46",
