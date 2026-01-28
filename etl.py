@@ -7,7 +7,7 @@ def etl(filename):
      
      This function will extract the contents of order_log.json, perform some form of cleaning, and then load it into a local sqlite .log file. """
     
-    conn = sqlite3.connect('logs.db')
+    conn = sqlite3.connect(f'{filename}.db')
 
     conn.execute("CREATE TABLE order_logs ("
         "time_stamp varchar(255), "
